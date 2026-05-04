@@ -80,16 +80,11 @@
 <div class="app-container">
     <h2>Hệ Thống Tính Tiền</h2>
     <!-- Khu vực hiển thị nút Kết Nối -->
-<div id="telegram-login-box" style="text-align: center; margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
-    <p style="margin-bottom: 15px; color: #475569; font-weight: bold;">Kết nối Telegram để nhận hóa đơn tự động</p>
-    
-    <!-- Thay "TEN_BOT_CUA_BAN_BOT" bằng Username con bot của bạn (Bỏ chữ @) -->
-    <script async src="https://telegram.org/js/telegram-widget.js?22" 
-            data-telegram-login="nhacaikubet_bot" 
-            data-size="large" 
-            data-onauth="onTelegramAuth(user)" 
-            data-request-access="write">
-    </script>
+<div id="box-ket-noi" style="text-align: center; margin-bottom: 20px; padding: 15px; background: #e0f2fe; border-radius: 8px; border: 1px solid #38bdf8;">
+    <p style="margin: 0 0 10px 0; font-weight: bold; color: #0369a1;">Vui lòng kết nối Telegram để nhận hóa đơn tự động</p>
+    <button onclick="moAppTelegram()" style="background: #0284c7; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+        Bấm vào đây để Kết Nối
+    </button>
 </div>
     
     <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    
@@ -374,15 +369,24 @@ function thucThi() {
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
     
-let userId = ""; // Mặc định để trống
+// 1. Tạo một mã ngẫu nhiên cho người dùng này khi họ vừa mở Web lên
+let maPhienLamViec = "WEB_" + Math.floor(Math.random() * 1000000); 
 
-// Hàm này tự động kích hoạt khi người dùng bấm nút kết nối thành công
-function onTelegramAuth(user) {
-    userId = user.id; // Lấy ID Telegram thật 100%
-    showToast('✅ Đã kết nối Telegram: ' + user.first_name);
+// ID Telegram sẽ được gán sau
+let userId = maPhienLamViec; 
+
+function moAppTelegram() {
+    // THAY TÊN BOT CỦA BẠN VÀO ĐÂY (Bỏ chữ @)
+    let tenBot = "tinh_tien_xo_so_bot"; 
     
-    // Giấu khu vực kết nối đi cho gọn màn hình
-    document.getElementById('telegram-login-box').style.display = 'none';
+    // Tạo đường link chứa mã ẩn (Deep Link)
+    let link = `https://t.me/${tenBot}?start=${maPhienLamViec}`;
+    
+    // Mở Tab mới để trình duyệt tự gọi cửa sổ Telegram Desktop lên
+    window.open(link, '_blank');
+    
+    // Đổi giao diện nút bấm để báo khách chờ
+    document.getElementById('box-ket-noi').innerHTML = `<p style="color: green; font-weight: bold;">✅ Đã gửi yêu cầu mở App Telegram.<br>Hãy ấn "Start" trong Bot để hoàn tất!</p>`;
 }
 
 function xoaHet() { location.reload(); }
