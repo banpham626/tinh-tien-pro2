@@ -135,23 +135,41 @@
 <div id="toast"></div>
 
 <script>
+
+//Thêm script xác thực
 let tg = null;
-let userId = "DAI_LY_VIP_01"; // Bạn có thể tự đổi tên này cho từng file exe gửi cho các đại lý khác nhau
+// 1. Khai báo mã phiên và gán mặc định cho userId (Dành cho khách mở trên Web Chrome/Edge)
+let maPhienLamViec = "WEB_" + Math.floor(Math.random() * 1000000); 
+let userId = maPhienLamViec; 
 
 try {
-    // Kiểm tra xem có đang nằm trong Telegram không
+    // 2. Kiểm tra xem có đang mở bằng môi trường Telegram (Điện thoại) không
     if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
         tg = window.Telegram.WebApp;
         tg.expand();
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            userId = tg.initDataUnsafe.user.id; // Lấy ID Telegram nếu có
+            userId = tg.initDataUnsafe.user.id; // Ghi đè lấy ID Telegram thật
+            
+            // Vì đã có ID thật rồi, nên ta giấu luôn cái nút Kết Nối đi cho gọn web
+            let boxKetNoi = document.getElementById('box-ket-noi');
+            if(boxKetNoi) boxKetNoi.style.display = 'none';
         }
-    } else {
-        console.log("Hệ thống đang chạy độc lập trên Windows (.exe)");
     }
 } catch (e) {
-    console.log("Lỗi môi trường: ", e);
+    console.log("Hệ thống đang chạy ngoài web độc lập");
 }
+
+// 3. Hàm kích hoạt khi bấm nút (Chỉ những ai chạy ngoài Web mới thấy nút này)
+function moAppTelegram() {
+    // LƯU Ý: Sửa lại tên Bot của bạn ở đây (Không có chữ @)
+    let tenBot = "tinh_tien_xo_so_bot"; 
+    
+    let link = `https://t.me/${tenBot}?start=${maPhienLamViec}`;
+    window.open(link, '_blank');
+    
+    document.getElementById('box-ket-noi').innerHTML = `<p style="color: green; font-weight: bold;">✅ Đã mở Telegram Desktop.<br>Vui lòng ấn "Start" (Bắt đầu) trong Bot để hoàn tất!</p>`;
+}
+
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzX5fjmOf0HFcz_PXtk4PU6E0mKQ1c97xDDY1O6d39vdytR4kmPQ9yIGpzStrPfXGiI/exec"; 
 
@@ -369,25 +387,6 @@ function thucThi() {
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
     
-// 1. Tạo một mã ngẫu nhiên cho người dùng này khi họ vừa mở Web lên
-let maPhienLamViec = "WEB_" + Math.floor(Math.random() * 1000000); 
-
-// ID Telegram sẽ được gán sau
-let userId = maPhienLamViec; 
-
-function moAppTelegram() {
-    // THAY TÊN BOT CỦA BẠN VÀO ĐÂY (Bỏ chữ @)
-    let tenBot = "tinh_tien_xo_so_bot"; 
-    
-    // Tạo đường link chứa mã ẩn (Deep Link)
-    let link = `https://t.me/${tenBot}?start=${maPhienLamViec}`;
-    
-    // Mở Tab mới để trình duyệt tự gọi cửa sổ Telegram Desktop lên
-    window.open(link, '_blank');
-    
-    // Đổi giao diện nút bấm để báo khách chờ
-    document.getElementById('box-ket-noi').innerHTML = `<p style="color: green; font-weight: bold;">✅ Đã gửi yêu cầu mở App Telegram.<br>Hãy ấn "Start" trong Bot để hoàn tất!</p>`;
-}
 
 function xoaHet() { location.reload(); }
 </script>
