@@ -79,6 +79,19 @@
 
 <div class="app-container">
     <h2>Hệ Thống Tính Tiền</h2>
+    <!-- Khu vực hiển thị nút Kết Nối -->
+<div id="telegram-login-box" style="text-align: center; margin: 20px 0; padding: 15px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
+    <p style="margin-bottom: 15px; color: #475569; font-weight: bold;">Kết nối Telegram để nhận hóa đơn tự động</p>
+    
+    <!-- Thay "TEN_BOT_CUA_BAN_BOT" bằng Username con bot của bạn (Bỏ chữ @) -->
+    <script async src="https://telegram.org/js/telegram-widget.js?22" 
+            data-telegram-login="TEN_BOT_CUA_BAN_BOT" 
+            data-size="large" 
+            data-onauth="onTelegramAuth(user)" 
+            data-request-access="write">
+    </script>
+</div>
+    
     <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    
     <div class="controls no-print">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
@@ -359,6 +372,17 @@ function thucThi() {
         }) 
     })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
+}
+    
+let userId = ""; // Mặc định để trống
+
+// Hàm này tự động kích hoạt khi người dùng bấm nút kết nối thành công
+function onTelegramAuth(user) {
+    userId = user.id; // Lấy ID Telegram thật 100%
+    showToast('✅ Đã kết nối Telegram: ' + user.first_name);
+    
+    // Giấu khu vực kết nối đi cho gọn màn hình
+    document.getElementById('telegram-login-box').style.display = 'none';
 }
 
 function xoaHet() { location.reload(); }
