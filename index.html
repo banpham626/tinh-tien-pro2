@@ -79,14 +79,6 @@
 
 <div class="app-container">
     <h2>Hệ Thống Tính Tiền</h2>
-    <!-- Khu vực hiển thị nút Kết Nối -->
-<div id="box-ket-noi" style="text-align: center; margin-bottom: 20px; padding: 15px; background: #e0f2fe; border-radius: 8px; border: 1px solid #38bdf8;">
-    <p style="margin: 0 0 10px 0; font-weight: bold; color: #0369a1;">Vui lòng kết nối Telegram để nhận hóa đơn tự động</p>
-    <button onclick="moAppTelegram()" style="background: #0284c7; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-        Bấm vào đây để Kết Nối
-    </button>
-</div>
-    
     <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    
     <div class="controls no-print">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
@@ -135,41 +127,9 @@
 <div id="toast"></div>
 
 <script>
-
-//Thêm script xác thực
-let tg = null;
-// 1. Khai báo mã phiên và gán mặc định cho userId (Dành cho khách mở trên Web Chrome/Edge)
-let maPhienLamViec = "WEB_" + Math.floor(Math.random() * 1000000); 
-let userId = maPhienLamViec; 
-
-try {
-    // 2. Kiểm tra xem có đang mở bằng môi trường Telegram (Điện thoại) không
-    if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-        tg = window.Telegram.WebApp;
-        tg.expand();
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            userId = tg.initDataUnsafe.user.id; // Ghi đè lấy ID Telegram thật
-            
-            // Vì đã có ID thật rồi, nên ta giấu luôn cái nút Kết Nối đi cho gọn web
-            let boxKetNoi = document.getElementById('box-ket-noi');
-            if(boxKetNoi) boxKetNoi.style.display = 'none';
-        }
-    }
-} catch (e) {
-    console.log("Hệ thống đang chạy ngoài web độc lập");
-}
-
-// 3. Hàm kích hoạt khi bấm nút (Chỉ những ai chạy ngoài Web mới thấy nút này)
-function moAppTelegram() {
-    // LƯU Ý: Sửa lại tên Bot của bạn ở đây (Không có chữ @)
-    let tenBot = "tinh_tien_xo_so_bot"; 
-    
-    let link = `https://t.me/${tenBot}?start=${maPhienLamViec}`;
-    window.open(link, '_blank');
-    
-    document.getElementById('box-ket-noi').innerHTML = `<p style="color: green; font-weight: bold;">✅ Đã mở Telegram Desktop.<br>Vui lòng ấn "Start" (Bắt đầu) trong Bot để hoàn tất!</p>`;
-}
-
+const tg = window.Telegram.WebApp;
+tg.expand();
+let userId = tg.initDataUnsafe?.user?.id || "";
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzX5fjmOf0HFcz_PXtk4PU6E0mKQ1c97xDDY1O6d39vdytR4kmPQ9yIGpzStrPfXGiI/exec"; 
 
@@ -212,56 +172,89 @@ function layHeSo(dai, loai, len) {
 }
     
 function thucThi() {
-    let raw = document.getElementById('raw_input').value;
-    if (!raw) return;
+    // ==========================================
+    // VÁ LỖI 4: KHÓA NÚT CHỐNG SPAM (DDoS)
+    // ==========================================
+    const btnCalc = document.querySelector('.btn-calc');
+    if (btnCalc.disabled) return; 
+    btnCalc.disabled = true;
+    let originalBtnText = btnCalc.innerText;
+    btnCalc.innerText = "⏳ ĐANG XỬ LÝ...";
 
-    // =======================================================
-    // BỘ LỌC 0 (VÁ LỖI): ĐỒNG BỘ TIẾNG VIỆT NGAY TỪ ĐẦU
-    // Chuyển toàn bộ thành chữ thường, xóa dấu, đổi 'đ' thành 'd'
-    // Giúp hệ thống không bao giờ bị nghẹn chữ 'đá', 'đầu'
-    // =======================================================
+    const unlockButton = () => {
+        btnCalc.disabled = false;
+        btnCalc.innerText = originalBtnText;
+    };
+
+    let raw = document.getElementById('raw_input').value;
+    if (!raw) { unlockButton(); return; }
+
+    // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT
     raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    // LỚP LỌC 1 (VÁ LỖI): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+    // =======================================================
+    // LỚP LỌC 1 (ĐÃ SỬA): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+    // Nới lỏng Regex để bắt các trường hợp đài dính với cược (VD: "2bn 31b10")
+    // =======================================================
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
-        } else if (/^(\d*[a-z]+)$/.test(line.replace(/\s+/g, ''))) {
-            // Đã nâng cấp Regex: Nhận diện mọi đài (2dt, hn, 3dai, dongnai...)
-            formattedLines.push("|" + line + ":");
         } else {
-            formattedLines.push(line);
+            // Regex mới: Tìm phần đầu tiên chỉ chứa chữ/số, ngay sau đó là khoảng trắng rồi tới số cược
+            // Vd: "2bn 31b10" -> Nhận "2bn" là đài
+            let match = line.match(/^([a-z0-9]+)\s+(.+)$/);
+            // Kiểm tra thêm điều kiện: Phần đầu bắt buộc phải chứa chữ cái (để không nhầm với số cược)
+            if (match && /[a-z]/.test(match[1])) {
+                formattedLines.push("|" + match[1] + ": " + match[2]);
+            } 
+            // Nếu dòng chỉ có mỗi chữ (vd: "hn", "2dt") -> Chắc chắn là đài
+            else if (/^([a-z0-9]+)$/.test(line.replace(/\s+/g, '')) && /[a-z]/.test(line)) {
+                 formattedLines.push("|" + line + ":");
+            }
+            else {
+                formattedLines.push(line);
+            }
         }
     }
     raw = formattedLines.join(', ');
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
+    // VÁ LỖI 1: CẦU CHÌ CHỐNG TRÀN RAM DỮ LIỆU KÉO
+    let isOverloaded = false;
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
         for (let i = 0; i < start.length; i++) {
-            if (start[i] !== end[i]) {
-                step = Math.pow(10, start.length - 1 - i);
-                break;
-            }
+            if (start[i] !== end[i]) { step = Math.pow(10, start.length - 1 - i); break; }
         }
         let arr = [];
         let s = parseInt(start, 10), e = parseInt(end, 10);
         if (s > e) { let t = s; s = e; e = t; } 
+        
+        if ((e - s) / step > 500) { 
+            isOverloaded = true; 
+            return match; 
+        }
+
         for (let i = s; i <= e; i += step) {
             arr.push(i.toString().padStart(start.length, '0'));
         }
         return arr.join('-');
     });
 
-    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM (Vd: "348b5 xc5" -> "348b5, xc5")
+    if (isOverloaded) {
+        showToast("⚠️ Mã cược KÉO quá dài (>500 số). Vui lòng chia nhỏ!");
+        unlockButton(); 
+        return; 
+    }
+
+    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
     raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
 
-    // LỚP LỌC 3: Xử lý dấu phẩy thập phân
+    // LỚP LỌC 3: MÁY NGHIỀN DẤU THẬP PHÂN VÀ KHOẢNG TRẮNG
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
@@ -272,19 +265,22 @@ function thucThi() {
 
     sections.forEach((s, idx) => {
         let p = s.split(':'); if (p.length < 2) return;
-        let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
+        
+        // VÁ LỖI 2: CHỐNG XSS BẰNG CÁCH LÀM SẠCH TÊN ĐÀI
+        let dR_raw = p[0].trim();
+        let d = convertDai(dR_raw); if (!d) return;
+        let dR_safe = dR_raw.replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase(); 
 
-        window.billText += dR.toUpperCase() + ":\n";
+        window.billText += dR_safe + ":\n";
         let ents = p[1].split(',');
 
-        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
+        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG Ở PHẦN SỐ
         ents = ents.map(e => {
             e = e.trim();
             let match = e.match(/[a-z]+/);
             if (match) {
                 let numPart = e.substring(0, match.index).trim();
                 numPart = numPart.replace(/[\s\.]+/g, '-');
-                
                 let moneyPart = e.substring(match.index);
                 return (numPart ? numPart + " " : "") + moneyPart;
             }
@@ -293,7 +289,6 @@ function thucThi() {
 
         let lineD = [], lastN = [];
 
-        // --- BẮT ĐẦU VÒNG LẶP TÍNH TIỀN ---
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -319,7 +314,6 @@ function thucThi() {
                 }
                 totalAll += sub;
                 
-                // --- GIAO DIỆN CÙNG DÒNG (INLINE) ---
                 lineD.push(`
                     <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
                         <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
@@ -333,7 +327,7 @@ function thucThi() {
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
                 jsonArray.push({
-                    dai: dR.toUpperCase(),
+                    dai: dR_safe,
                     so: curN.join('-'),
                     kieu: lo,
                     tien: tien
@@ -346,7 +340,7 @@ function thucThi() {
         detailHTML += `
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
                 <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
-                    ĐÀI ${dR.toUpperCase()}
+                    ĐÀI ${dR_safe}
                 </div>
                 ${lineD.join('')}
             </div>
@@ -373,20 +367,28 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
+    // VÁ LỖI 3: CẮT TỈA TRƯỚC KHI GỬI TELEGRAM
+    let finalChiTiet = window.billText.trim();
+    if (finalChiTiet.length > 3800) {
+        finalChiTiet = finalChiTiet.substring(0, 3800) + "\n\n... [ĐƠN QUÁ DÀI. ĐÃ CẮT BỚT ĐỂ GỬI BOT. VUI LÒNG XEM TRÊN APP!] ...";
+        showToast("⚠️ Đơn quá dài! Đã cắt bớt tin nhắn gửi Bot.");
+    }
+
     fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
-            dai: sections[0].split(':')[0].toUpperCase(), 
-            chiTiet: window.billText.trim(), 
+            dai: sections.length > 0 ? sections[0].split(':')[0].replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase().trim() : "", 
+            chiTiet: finalChiTiet, 
             tongTien: final, 
             secCode: secCode, 
-            userId: userId,
+            telegramId: userId,
             duLieuChuan: JSON.stringify(jsonArray) 
         }) 
     })
-    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
+    .then(() => showToast("✅ Đã gửi vào Telegram!"))
+    .catch(() => showToast("❌ Lỗi kết nối, vui lòng thử lại!"))
+    .finally(() => unlockButton()); 
 }
-    
 
 function xoaHet() { location.reload(); }
 </script>
