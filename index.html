@@ -53,7 +53,7 @@
         .label-type { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-size: 12px; margin: 0 2px; }
         .valid-row { border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px; }
 
-        #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 25px; border-radius: 50px; z-index: 1000; }
+        #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 25px; border-radius: 50px; z-index: 10000; }
         #toast.show { visibility: visible; animation: fade 0.5s; }
         @keyframes fade { from {opacity: 0;} to {opacity: 1;} }
 
@@ -100,7 +100,7 @@
 </div>
 
 <div id="print_area">
-    <h2 style="text-align: center; margin: 0; color: black;">HÓA ĐƠN</h2>
+    <h2 style="text-align: center; margin: 0; color: black;">BIÊN NHẬN ĐỐI SOÁT</h2>
     <div id="print_time" style="text-align: center; font-size: 14px; margin-bottom: 20px; color: #333;"></div>
     
     <div id="print_detail_content" style="font-size: 16px; margin-bottom: 15px;"></div>
@@ -122,13 +122,13 @@
 <div id="image_modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; justify-content:center; align-items:center; flex-direction:column;">
     <div style="background: white; padding: 20px; border-radius: 12px; max-width: 90%; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
         <h3 style="margin-top: 0; color: #e11d48; font-size: 16px;">📸 ẢNH BIÊN NHẬN</h3>
-        <p style="font-size: 13px; color: #475569; margin-top: -10px; margin-bottom: 15px;">Nhấn <b>Tải Xuống</b> hoặc nhấn giữ vào ảnh để Gửi Zalo</p>
+        <p style="font-size: 13px; color: #475569; margin-top: -10px; margin-bottom: 15px;">Nhấn <b>Lưu & Chia Sẻ</b> hoặc nhấn giữ vào ảnh để Gửi</p>
         
         <img id="bill_image" style="max-width: 100%; border: 1px dashed #cbd5e1; border-radius: 8px;" />
         
         <div style="display: flex; gap: 10px; margin-top: 15px;">
             <button onclick="document.getElementById('image_modal').style.display='none'" style="background: #64748b; padding: 12px 20px; color: white; border: none; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer;">Đóng Lại</button>
-            <button onclick="taiAnhVeMay()" style="background: var(--primary); padding: 12px 20px; color: white; border: none; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer;">💾 Tải Xuống</button>
+            <button onclick="taiAnhVeMay()" style="background: var(--primary); padding: 12px 20px; color: white; border: none; border-radius: 8px; flex: 2; font-weight: bold; cursor: pointer;">💾 LƯU & CHIA SẺ</button>
         </div>
     </div>
 </div>
@@ -435,20 +435,61 @@ function xuLyIn() {
     }
 }
 
-// Hàm bổ sung: Gọi lệnh tải ảnh thông qua thẻ 'a'
+// -------------------------------------------------------------
+// BẢN VÁ LỖI TẢI ẢNH (DÙNG WEB SHARE API HOẶC BLOB FALLBACK)
+// -------------------------------------------------------------
 function taiAnhVeMay() {
     const imgSrc = document.getElementById('bill_image').src;
-    if (!imgSrc) {
+    if (!imgSrc || imgSrc === '') {
         showToast("⚠️ Không tìm thấy ảnh để tải!");
         return;
     }
+
+    // Chuyển đổi chuỗi Base64 thành đối tượng Blob an toàn
+    fetch(imgSrc)
+        .then(res => res.blob())
+        .then(blob => {
+            const fileName = 'Bien_Nhan_' + new Date().getTime() + '.png';
+            const file = new File([blob], fileName, { type: blob.type });
+
+            // TH1: Dùng Web Share API (Menu chia sẻ gốc của hệ điều hành - Rất hiệu quả trên Mobile)
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Biên Nhận Đối Soát',
+                    text: 'Gửi biên nhận đối soát'
+                }).then(() => {
+                    showToast("✅ Đã mở menu Chia sẻ/Lưu!");
+                }).catch((error) => {
+                    // Nếu user hủy hoặc API bị chặn ngầm, sử dụng cách Tải Xuống truyền thống
+                    taiBlobTruyenThong(blob, fileName);
+                });
+            } else {
+                // TH2: Trình duyệt không hỗ trợ Share API, thực hiện tải xuống kiểu truyền thống
+                taiBlobTruyenThong(blob, fileName);
+            }
+        })
+        .catch(err => {
+            showToast("❌ Lỗi xử lý ảnh!");
+            console.error(err);
+        });
+}
+
+function taiBlobTruyenThong(blob, fileName) {
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = imgSrc;
-    link.download = 'Bien_Nhan_' + new Date().getTime() + '.png';
+    link.style.display = 'none';
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    showToast("✅ Đang tải ảnh xuống!");
+    
+    // Dọn dẹp tài nguyên
+    setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        showToast("✅ Đã lệnh tải ảnh xuống!");
+    }, 100);
 }
 </script>
 </body>
