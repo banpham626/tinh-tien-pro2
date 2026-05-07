@@ -60,14 +60,7 @@
         /* --- TÍNH NĂNG ĐỊNH DẠNG BẢN IN --- */
         @media print {
             body > :not(#print_area) { display: none !important; }
-            #print_area { 
-                display: block !important; 
-                width: 100%; 
-                max-width: 400px; 
-                margin: 0 auto; 
-                color: black; 
-                font-family: sans-serif;
-            }
+            #print_area { display: block !important; width: 100%; max-width: 400px; margin: 0 auto; color: black; font-family: sans-serif; }
             @page { margin: 5mm; } 
             .num-blue { color: black !important; font-weight: bold; }
             .cash-red { color: black !important; font-weight: bold; }
@@ -81,10 +74,11 @@
 <div class="app-container">
     <h2>Hệ Thống Tính Tiền</h2>
     <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    
-    <button class="btn-print" onclick="xuLyIn()">🖨️ IN / TẢI ẢNH</button>
+    
+    <div class="controls">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
         <button class="btn-copy" onclick="copyZalo()">📋 COPY</button>
-        <button class="btn-print" onclick="window.print()">🖨️ IN KẾT QUẢ</button>
+        <button class="btn-print" onclick="xuLyIn()">🖨️ IN / TẢI ẢNH</button>
         <button class="btn-clear" onclick="xoaHet()">XÓA HẾT</button>
     </div>
 
@@ -125,7 +119,6 @@
     </div>
 </div>
 
-<!-- LỚP ÁO GIÁP (LOADING OVERLAY) -->
 <div id="image_modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; justify-content:center; align-items:center; flex-direction:column;">
     <div style="background: white; padding: 20px; border-radius: 12px; max-width: 90%; max-height: 85vh; overflow-y: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
         <h3 style="margin-top: 0; color: #e11d48; font-size: 16px;">📸 ẢNH BIÊN NHẬN</h3>
@@ -136,6 +129,7 @@
         <button onclick="document.getElementById('image_modal').style.display='none'" style="margin-top: 15px; background: #64748b; padding: 12px 20px; color: white; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer;">Đóng Lại</button>
     </div>
 </div>
+
 <div id="loading_overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:white;">
     <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
     <div style="font-size:20px; font-weight:bold; letter-spacing: 1px;">⏳ VUI LÒNG ĐỢI...</div>
@@ -169,7 +163,6 @@ function convertDai(d) {
 
 function mapLoaiChoi(s) {
     let sc = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, "");
-    
     if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc") || sc.includes("xiuchudao") || sc.includes("daoxiuchu")) return "xcd";
     if (sc.includes("bd") || sc.includes("bdao") || sc.includes("daob") || sc.includes("baodao")) return "bd";
 
@@ -218,12 +211,11 @@ function thucThi() {
     document.getElementById('loading_overlay').style.display = "flex";
 
     setTimeout(() => {
-        
         // MÁY HÚT BỤI
         raw = raw.replace(/_/g, '-');
         raw = raw.replace(/[\.\,]{2,}/g, ' ');
 
-        // ĐỒNG BỘ TIẾNG VIỆT (FIX LỖI 0,5 TỐI THƯỢNG ĐÃ ĐƯỢC BẢO TOÀN)
+        // ĐỒNG BỘ TIẾNG VIỆT
         raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
         // LỚP LỌC 1 (NGUYÊN BẢN CHUẨN)
@@ -235,7 +227,6 @@ function thucThi() {
                 formattedLines.push("|" + line);
             } else {
                 let match = line.match(/^(\p{L}+\s+\p{L}+|\d+\p{L}+|\p{L}+)\s+(?=\d)/u);
-                
                 if (match && isDai(match[1])) {
                     let fixedLine = line.substring(0, match[1].length) + ':' + line.substring(match[1].length);
                     formattedLines.push("|" + fixedLine);
@@ -252,7 +243,7 @@ function thucThi() {
         raw = formattedLines.join(', ');
         raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
         if (raw.startsWith('|')) raw = raw.substring(1);
-
+        
         // CỬA AN NINH
         let checkSections = raw.split('|').map(s => s.trim()).filter(s => s);
         if (checkSections.length === 0) {
@@ -266,18 +257,14 @@ function thucThi() {
             return;
         }
 
-        // ==========================================
-        // LỚP LỌC 2: AI TỰ ĐỘNG NỘI SUY BƯỚC NHẢY CHO "KÉO"
-        // ==========================================
+        // LỚP LỌC 2: AI TỰ ĐỘNG NỘI SUY BƯỚC NHẢY
         raw = raw.replace(/(\d+)\s*(?:keo|kéo)\s*(\d+)/gi, function(match, start, end) {
             if (start.length !== end.length) return match;
             
-            // Xây dựng bản đồ bước nhảy dựa trên sự thay đổi của từng chữ số
             let stepStr = "";
             for (let i = 0; i < start.length; i++) {
                 stepStr += (start[i] !== end[i]) ? "1" : "0";
             }
-            // Biến bản đồ thành con số thực tế (vd: 00 đến 99 -> đổi 2 số -> 11)
             let step = parseInt(stepStr, 10) || 1;
             
             let arr = [];
@@ -298,7 +285,7 @@ function thucThi() {
         let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
         window.billText = "";
         let jsonArray = [];
-
+        
         sections.forEach((s, idx) => {
             let p = s.split(':'); if (p.length < 2) return;
             let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
@@ -308,9 +295,6 @@ function thucThi() {
 
             ents = ents.map(e => {
                 e = e.trim();
-                // ==========================================
-                // FIX LỖI TÁCH CHỮ 7 LÔ (Ưu tiên đọc 7lo trước khi cắt [a-z])
-                // ==========================================
                 let match = e.match(/7\s*lo|4\s*lo|[a-z]+/);
                 if (match) {
                     let numPart = e.substring(0, match.index).trim();
@@ -322,7 +306,6 @@ function thucThi() {
             });
 
             let lineD = [], lastN = [];
-
             ents.forEach(e => {
                 e = e.trim();
                 let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -355,7 +338,6 @@ function thucThi() {
                         curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
                     }
                     totalAll += sub;
-                    
                     lineD.push(`
                         <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
                             <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
@@ -365,20 +347,12 @@ function thucThi() {
                             </span>
                         </div>
                     `);
-                    
                     window.billText += `${curN.join('-')}${lo}${tien}\n`;
                     
-                    jsonArray.push({
-                        dai: dR.toUpperCase(),
-                        so: curN.join('-'),
-                        kieu: lo,
-                        tien: tien
-                    });
-
+                    jsonArray.push({ dai: dR.toUpperCase(), so: curN.join('-'), kieu: lo, tien: tien });
                     if (sG) lastN = curN;
                 }
             });
-            
             detailHTML += `
                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
                     <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
@@ -426,15 +400,15 @@ function thucThi() {
         })
         .then(() => showToast("✅ Đã gửi Telegram!"))
         .catch(() => showToast("❌ Có lỗi xảy ra, vui lòng thử lại!"));
-        
     }, 50); 
 }
 
 function xoaHet() { location.reload(); }
+
 // TÍNH NĂNG IN TRÊN MÁY TÍNH & TẠO ẢNH TRÊN MOBILE
 function xuLyIn() {
     if (!window.billText) { 
-        showToast("⚠️ Chưa có dữ liệu để in!"); 
+        showToast("⚠️ Chưa có dữ liệu để in!");
         return; 
     }
 
@@ -479,7 +453,6 @@ function xuLyIn() {
         });
     }
 }
-
 </script>
 </body>
 </html>
