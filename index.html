@@ -78,7 +78,7 @@
     <div class="controls">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
         <button class="btn-copy" onclick="copyZalo()">📋 COPY</button>
-        <button class="btn-print" onclick="xuLyIn()">🖨️ IN / TẢI ẢNH</button>
+        <button class="btn-print" onclick="">🖨️ IN / TẢI ẢNH</button>
         <button class="btn-clear" onclick="xoaHet()">XÓA HẾT</button>
     </div>
 
@@ -405,52 +405,80 @@ function thucThi() {
 
 function xoaHet() { location.reload(); }
 
-// TÍNH NĂNG IN TRÊN MÁY TÍNH & TẠO ẢNH TRÊN MOBILE
+// TÍNH NĂNG IN ĐA NỀN TẢNG (WIFI / BLUETOOTH / PC)
 function xuLyIn() {
     if (!window.billText) { 
         showToast("⚠️ Chưa có dữ liệu để in!");
         return; 
     }
 
-    // Nhận diện thiết bị đang mở là Điện thoại hay Máy tính
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
     if (!isMobile) {
-        // Nếu là PC: Mở cửa sổ máy in bình thường
+        // Nếu là PC: In bình thường
         window.print();
     } else {
-        // Nếu là Điện thoại: Chụp ảnh bill
-        showToast("⏳ Đang tạo ảnh biên nhận...");
-        const printArea = document.getElementById('print_area');
-        
-        // Mẹo: Kéo khu vực in ra khỏi màn hình rồi hiện lên để chụp ảnh ngầm
-        printArea.style.display = 'block';
-        printArea.style.position = 'absolute';
-        printArea.style.left = '-9999px';
-        printArea.style.top = '0';
-        printArea.style.width = '400px'; 
-        printArea.style.background = 'white'; 
-        printArea.style.padding = '20px';
+        // Mở bảng hỏi chọn chế độ in trên Mobile
+        let chonIn = prompt(
+            "🖨️ CHỌN PHƯƠNG THỨC IN K80:\n\n" +
+            "1. Máy in LAN/Wifi (Mở qua Chrome/Safari)\n" +
+            "2. Máy in Bluetooth Android (Cần cài App RawBT)\n" +
+            "3. Lưu Ảnh Bill (Để in qua App Xprinter trên iOS/Android)\n\n" +
+            "👉 Nhập số 1, 2 hoặc 3:"
+        );
 
-        // Chụp ảnh bằng thư viện
-        html2canvas(printArea, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
-            // Chụp xong thì ẩn khu vực in đi và trả lại chỗ cũ
-            printArea.style.display = 'none';
-            printArea.style.position = 'static';
+        if (chonIn === '1') {
+            // Chế độ in Wifi: Phải thoát khỏi Telegram Web App
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+                alert("Hệ thống sẽ mở Safari/Chrome để có thể gọi máy in Wifi.");
+                window.Telegram.WebApp.openLink(window.location.href);
+            } else {
+                window.print();
+            }
+        } 
+        else if (chonIn === '2') {
+            // Chế độ in Bluetooth qua App RawBT (Android)
+            // Cấu trúc lại nội dung text thành dạng hóa đơn thuần túy để gửi cho máy in
+            let tieuDe = document.getElementById('st_tieuDe')?.value || "BIEN NHAN DOI SOAT";
+            let tongTien = document.getElementById('result_total').innerText;
             
-            // Chuyển canvas thành file ảnh PNG
-            const imgData = canvas.toDataURL('image/png');
-            document.getElementById('bill_image').src = imgData;
+            // Xóa dấu tiếng việt để máy in K80 không bị lỗi font
+            let printContent = tieuDe.toUpperCase() + "\n";
+            printContent += "--------------------------------\n";
+            printContent += window.billText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D") + "\n";
+            printContent += "--------------------------------\n";
+            printContent += "TONG TIEN: " + tongTien + "\n\n";
+            printContent += "     Cam on quy khach!\n\n\n"; // Cách dòng để máy in đẩy giấy lên
             
-            // Hiển thị khung Popup chứa ảnh
-            document.getElementById('image_modal').style.display = 'flex';
-            showToast("✅ Tạo ảnh thành công!");
-        }).catch(err => {
-            printArea.style.display = 'none';
-            printArea.style.position = 'static';
-            showToast("❌ Có lỗi xảy ra khi tạo ảnh!");
-            console.error(err);
-        });
+            // Mã hóa dữ liệu và gọi App RawBT
+            let b64 = btoa(unescape(encodeURIComponent(printContent)));
+            window.location.href = "intent://" + b64 + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+        } 
+        else if (chonIn === '3') {
+            // Chế độ Ảnh: Dùng lại logic HTML2Canvas cũ
+            showToast("⏳ Đang tạo ảnh biên nhận...");
+            const printArea = document.getElementById('print_area');
+            printArea.style.display = 'block';
+            printArea.style.position = 'absolute';
+            printArea.style.left = '-9999px';
+            printArea.style.top = '0';
+            printArea.style.width = '400px'; 
+            printArea.style.background = 'white'; 
+            printArea.style.padding = '20px';
+
+            html2canvas(printArea, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
+                printArea.style.display = 'none';
+                printArea.style.position = 'static';
+                const imgData = canvas.toDataURL('image/png');
+                document.getElementById('bill_image').src = imgData;
+                document.getElementById('image_modal').style.display = 'flex';
+                showToast("✅ Tạo ảnh thành công!");
+            }).catch(err => {
+                printArea.style.display = 'none';
+                printArea.style.position = 'static';
+                showToast("❌ Có lỗi xảy ra khi tạo ảnh!");
+            });
+        }
     }
 }
 </script>
