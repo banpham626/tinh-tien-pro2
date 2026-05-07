@@ -78,7 +78,7 @@
     <div class="controls">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
         <button class="btn-copy" onclick="copyZalo()">📋 COPY</button>
-        <button class="btn-print" onclick="">🖨️ IN / TẢI ẢNH</button>
+        <button class="btn-print" onclick="xuLyIn()">🖨️ IN / TẢI ẢNH</button>
         <button class="btn-clear" onclick="xoaHet()">XÓA HẾT</button>
     </div>
 
@@ -405,7 +405,7 @@ function thucThi() {
 
 function xoaHet() { location.reload(); }
 
-// TÍNH NĂNG IN ĐA NỀN TẢNG (WIFI / BLUETOOTH / PC)
+// TÍNH NĂNG IN TRÊN MÁY TÍNH & TẠO ẢNH TRÊN MOBILE
 function xuLyIn() {
     if (!window.billText) { 
         showToast("⚠️ Chưa có dữ liệu để in!");
@@ -415,7 +415,7 @@ function xuLyIn() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
     if (!isMobile) {
-        // Nếu là PC: In bình thường
+        // Nếu là PC: Mở cửa sổ máy in bình thường
         window.print();
     } else {
         // Mở bảng hỏi chọn chế độ in trên Mobile
